@@ -16,7 +16,7 @@ from functools import partial
 import numpy as np
 
 # Basic model parameters.
-BATCH_SIZE = 128
+BATCH_SIZE = 16
 NUM_EXAMPLES = 10000
 IMG_SIZE = 28
 saved_path = "/home/pohsuanh/Documents/Schweighofer Lab/my_model_variational.ckpt"
@@ -44,41 +44,42 @@ class CIFAR10(object):
         IMG_SIZE = 32
         NUM_EXAMPLES = self.x_train.shape[0]
         if normalize :
-            self.x_train_float = self.x_train.astype(np.float32)
-            self.x_test_float = self.x_test.astype(np.float32)
+            self.x_train = self.x_train.astype(np.float16)
+            self.x_test = self.x_test.astype(np.float16)
             # Image Normalization
-            for i , img in enumerate(self.x_train_float) :
+            for i , img in enumerate(self.x_train) :
 #                img_norm = img - np.mean(img)
 #                img_norm = img_norm/(np.max(img_norm)-np.min(img_norm))
                 img_norm = img/np.max(img)
-                self.x_train_float[i] = img_norm
+                self.x_train[i] = img_norm
                 
-            for i , img in enumerate(self.x_test_float) :
+            for i , img in enumerate(self.x_test) :
 #                img_norm = img - np.mean(img)
 #                img_norm = img_norm/(np.max(img_norm)-np.min(img_norm))
                 img_norm = img/np.max(img)
-                self.x_test_float[i] = img_norm   
+                self.x_test[i] = img_norm   
          
     def _cifar10_data(self, batch_size=BATCH_SIZE, _eval=False):
         # laod and return data and label X_batch, Y_batch
         if not _eval : # laod trainset
-          X_batch = tf.data.Dataset.from_tensor_slices( self.x_train_float).repeat().batch(batch_size)
+          X_batch = tf.data.Dataset.from_tensor_slices( self.x_train).repeat().batch(batch_size)
           Y_batch = tf.data.Dataset.from_tensor_slices( self.y_train ).repeat().batch(batch_size)
           return X_batch, Y_batch
         else:
-          X_batch = tf.data.Dataset.from_tensor_slices( self.x_test_float ).repeat().batch(batch_size)
+          X_batch = tf.data.Dataset.from_tensor_slices( self.x_test ).repeat().batch(batch_size)
           Y_batch = tf.data.Dataset.from_tensor_slices( self.y_test ).repeat().batch(batch_size)
           return X_batch, Y_batch
       
     def cifar10_input(self, batch_size=BATCH_SIZE, _eval=False):
          X_batch, Y_batch = self._cifar10_data(batch_size,_eval)
          return X_batch.make_one_shot_iterator(), Y_batch.make_one_shot_iterator()
- 
+     
 def reset_graph(seed=42):
     tf.reset_default_graph()
     tf.set_random_seed(seed)
     np.random.seed(seed)    
-#%%    
+#%%
+    
 reset_graph()    
 cifar10 = CIFAR10()
 X, Y = cifar10.cifar10_input()
@@ -149,10 +150,10 @@ with tf.Session() as sess:
             sys.stdout.flush()
             sess.run(training_op)
         # eval_inputs     
-        X, Y = cifar10.cifar10_input( BATCH_SIZE, True)
-        X_batch, Y_batch = X.get_next(), Y.get_next()
-        inputs =  tf.cast(X_batch, tf.float32)
-        inputs = tf.reshape(inputs,[-1,IMG_SIZE * IMG_SIZE*3])
+#        X, Y = cifar10.cifar10_input( BATCH_SIZE, True)
+#        X_batch, Y_batch = X.get_next(), Y.get_next()
+#        inputs =  tf.cast(X_batch, tf.float32)
+#        inputs = tf.reshape(inputs,[-1,IMG_SIZE * IMG_SIZE*3])
         loss_val, reconstruction_loss_val, latent_loss_val = sess.run([loss, reconstruction_loss, latent_loss])
         print("\r{}".format(epoch), "Train total loss:", loss_val, "\tReconstruction loss:", reconstruction_loss_val, "\tLatent loss:", latent_loss_val)
     
