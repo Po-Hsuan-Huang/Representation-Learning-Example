@@ -19,7 +19,7 @@ import numpy as np
 BATCH_SIZE = 16
 NUM_EXAMPLES = 10000
 IMG_SIZE = 28
-
+saved_path = "/home/pohsuanh/Documents/Schweighofer Lab/my_model_variational.ckpt"
 
 n_digits =60
 
@@ -90,6 +90,7 @@ my_dense_layer = partial(
     tf.layers.dense,
     activation=None, #tf.nn.elu,
     kernel_initializer=initializer)
+print('constructing graph ...')
 inputs =  tf.cast(X_batch, tf.float32)
 print_in = tf.Print(inputs,[inputs[0]],'input_img')
 inputs = tf.reshape(inputs,[-1,IMG_SIZE * IMG_SIZE*3])
@@ -114,13 +115,22 @@ optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 training_op = optimizer.minimize(loss)
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
+
 n_epochs = 15
+config = tf.ConfigProto(allow_soft_placement=True)
+config.gpu_options.allow_growth = True
+#config.log_device-placement=True
+with tf.Session(config=config) as sess:
+    print('run session...')
+    writer = tf.summary.FileWriter("/home/pohsuanh/Documents/Schweighofer Lab/tensorgraphs", sess.graph)
+    
+    try :
+        print('load session checkpoint...')
+        saver.restore(sess,saved_path)
+    except tf.errors.NotFoundError:
+        print('initailize graph variables')
+        init.run()
 
-
-with tf.Session() as sess:
-    writer = tf.summary.FileWriter("/home/pohsuanh/Documents/Schweighofer Lab", sess.graph)
-    init.run()
-    saver.recover_last_checkpoints("./my_model_variational.ckpt")
     for epoch in range(n_epochs):
         n_batches = NUM_EXAMPLES // BATCH_SIZE
         for iteration in range(n_batches):
@@ -134,7 +144,7 @@ with tf.Session() as sess:
         inputs = tf.reshape(inputs,[-1,IMG_SIZE * IMG_SIZE*3])
         loss_val, reconstruction_loss_val, latent_loss_val = sess.run([loss, reconstruction_loss, latent_loss])
         print("\r{}".format(epoch), "Train total loss:", loss_val, "\tReconstruction loss:", reconstruction_loss_val, "\tLatent loss:", latent_loss_val)
-        saver.save(sess, "./my_model_variational.ckpt")
+        saver.save(sess, saved_path)
     writer.close()
 
 
@@ -177,11 +187,11 @@ def encode_decode():
     inputs_sample = X.get_next()
     input_array = tf.Session().run(inputs_sample).reshape(-1,IMG_SIZE*IMG_SIZE*3).astype(np.float32)  
     with tf.Session() as sess:
-        saver.restore(sess, "./my_model_variational.ckpt")
+        saver.restore(sess, saved_path)
         codings_val = codings.eval(feed_dict={inputs: input_array})
     print( '''Decode''' )    
     with tf.Session() as sess:
-        saver.restore(sess, "./my_model_variational.ckpt")
+        saver.restore(sess, saved_path)
         outputs_val = outputs.eval(feed_dict={codings: codings_val})
     fig = plt.figure(figsize=(8, 2.5 * n_digits))
     
