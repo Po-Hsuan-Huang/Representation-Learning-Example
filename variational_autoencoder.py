@@ -21,7 +21,7 @@ NUM_EXAMPLES = 10000
 IMG_SIZE = 28
 saved_path = "/home/pohsuanh/Documents/Schweighofer Lab/my_model_variational.ckpt"
 
-n_digits =60
+n_digits =20
 
 
 class NMIST(object):
@@ -37,29 +37,36 @@ class NMIST(object):
         return self.mnist.train.next_batch(batch_size)
     
 class CIFAR10(object):
-    def __init__(self):
+    def __init__(self, normalize= True):
+        
         (self.x_train, self.y_train), (self.x_test, self.y_test) = tf.keras.datasets.cifar10.load_data()
         global NUM_EXAMPLES, IMG_SIZE, BATCH_SIZE
         IMG_SIZE = 32
         NUM_EXAMPLES = self.x_train.shape[0]
-        # Image Normalization
-        for i , img in enumerate(self.x_train) :
-            img_norm = img - np.mean(img)
-            img_norm = img_norm/(np.max(img_norm)-np.min(img_norm))
-            self.x_train[i] = img_norm
-        for i , img in enumerate(self.x_test) :
-            img_norm = img - np.mean(img)
-            img_norm = img_norm/(np.max(img_norm)-np.min(img_norm))
-            self.x_test[i] = img_norm   
+        if normalize :
+            self.x_train_float = self.x_train.astype(np.float32)
+            self.x_test_float = self.x_test.astype(np.float32)
+            # Image Normalization
+            for i , img in enumerate(self.x_train_float) :
+#                img_norm = img - np.mean(img)
+#                img_norm = img_norm/(np.max(img_norm)-np.min(img_norm))
+                img_norm = img/np.max(img)
+                self.x_train_float[i] = img_norm
+                
+            for i , img in enumerate(self.x_test_float) :
+#                img_norm = img - np.mean(img)
+#                img_norm = img_norm/(np.max(img_norm)-np.min(img_norm))
+                img_norm = img/np.max(img)
+                self.x_test_float[i] = img_norm   
          
     def _cifar10_data(self, batch_size=BATCH_SIZE, _eval=False):
         # laod and return data and label X_batch, Y_batch
         if not _eval : # laod trainset
-          X_batch = tf.data.Dataset.from_tensor_slices( self.x_train).repeat().batch(batch_size)
+          X_batch = tf.data.Dataset.from_tensor_slices( self.x_train_float).repeat().batch(batch_size)
           Y_batch = tf.data.Dataset.from_tensor_slices( self.y_train ).repeat().batch(batch_size)
           return X_batch, Y_batch
         else:
-          X_batch = tf.data.Dataset.from_tensor_slices( self.x_test ).repeat().batch(batch_size)
+          X_batch = tf.data.Dataset.from_tensor_slices( self.x_test_float ).repeat().batch(batch_size)
           Y_batch = tf.data.Dataset.from_tensor_slices( self.y_test ).repeat().batch(batch_size)
           return X_batch, Y_batch
       
@@ -83,12 +90,14 @@ n_hidden3 = 20  # codings
 n_hidden4 = n_hidden2
 n_hidden5 = n_hidden1
 n_outputs = n_inputs
-learning_rate = 10**-4
+
+## initial_lr = 10**-4 (<60 epochs)
+learning_rate = 10**-3 
 
 initializer = tf.contrib.layers.variance_scaling_initializer()
 my_dense_layer = partial(
     tf.layers.dense,
-    activation=None, #tf.nn.elu,
+    activation=tf.nn.elu,
     kernel_initializer=initializer)
 print('constructing graph ...')
 inputs =  tf.cast(X_batch, tf.float32)
@@ -155,51 +164,57 @@ with tf.Session(config=config) as sess:
 #%%
 def plot_image(image, shape=[32,32,3], colors="gray"):
     # NMINST shape: [32,32] colors: 'Grey'
-    plt.imshow(image.reshape(shape)*1/np.max(image), cmap=colors, interpolation="nearest")
+    # restore from [0,1] for floats to [0, 255] for integers
+#    if image.dtype == np.int8 :
+#        pass
+#    elif image.dtype == np.float64 :
+#        image = image.reshape(shape)*1/( np.max(image)-np.min(image) )
+#        image = image + (np.max(image)-np.min(image))*0.5
+#        image = image.astype(np.int8)
+    plt.imshow(image, cmap=colors, interpolation="nearest")
     plt.axis("off")
     
 def plot_multiple_images(images, n_rows, n_cols, pad=2):
     images = images - images.min()  # make the minimum == 0, so the padding looks white
-    w,h = images.shape[1:]
-    image = np.zeros(((w+pad)*n_rows+pad, (h+pad)*n_cols+pad))
-    for y in range(n_rows):
-        for x in range(n_cols):
-            image[(y*(h+pad)+pad):(y*(h+pad)+pad+h),(x*(w+pad)+pad):(x*(w+pad)+pad+w)] = images[y*n_cols+x]
-    plt.imshow(image, cmap="Greys", interpolation="nearest")
-    plt.axis("off")   
+    plt.figure(figsize=(20, 2.5 * n_digits//5)) # not shown in the book
+    for iteration in range(n_digits):
+        plt.subplot(n_digits//5, 5, iteration + 1)
+        plot_image(images[iteration])
 #%% """     Generate digits      """ 
 def generate_digits() :
-    print(    """     Generate digits      """     )
+    print("Generate digits")
     global outputs_eval
     global n_digits
     
-    plt.figure() # not shown in the book
+    plt.figure(figsize=(20, 2.5 * n_digits//5)) # not shown in the book
     for iteration in range(n_digits):
-        plt.subplot(6, 10, iteration + 1)
+        plt.subplot(n_digits//5, 5, iteration + 1)
         plot_image(outputs_val[iteration])
     
 #%%    Encode and Decode
 def encode_decode():
     print( '''Encode''' )
-    n_digits = 5
     codings = hidden3
     X, Y = CIFAR10().cifar10_input(n_digits,True)
     inputs_sample = X.get_next()
-    input_array = tf.Session().run(inputs_sample).reshape(-1,IMG_SIZE*IMG_SIZE*3).astype(np.float32)  
+    input_array = tf.Session().run(inputs_sample)
+    
+    print("input images")
+    plot_multiple_images(input_array,4,5)
+    
+
     with tf.Session() as sess:
         saver.restore(sess, saved_path)
+        input_array = input_array.reshape(-1,IMG_SIZE*IMG_SIZE*3).astype(np.float32)  
         codings_val = codings.eval(feed_dict={inputs: input_array})
+    
     print( '''Decode''' )    
     with tf.Session() as sess:
         saver.restore(sess, saved_path)
         outputs_val = outputs.eval(feed_dict={codings: codings_val})
-    fig = plt.figure(figsize=(8, 2.5 * n_digits))
     
-    for iteration in range(n_digits):
-        plt.subplot(n_digits, 2, 1 + 2 * iteration)
-        plot_image(input_array[iteration])
-        plt.subplot(n_digits, 2, 2 + 2 * iteration)
-        plot_image(outputs_val[iteration])
+    print("output images")
+    plot_multiple_images(outputs_val,4,5)
     
 #%% Interpolate digits¶
 def interpolate_digits():
@@ -222,6 +237,16 @@ def interpolate_digits():
                 plot_image(outputs_val[digit_index])
 
 #%%
-generate_digits()
+#print("input images")
+#cifar10_eval = CIFAR10(False).x_test[:n_digits]
+#plot_multiple_images(cifar10_eval,4,5)
+##%%
+#print("input images normalize and restore")
+#images, label = CIFAR10().cifar10_input(n_digits,True)
+#inputs_sample = images.get_next()
+#input_array = tf.Session().run(inputs_sample)
+#plot_multiple_images(input_array,4,5)
+
+#%%    
 
 encode_decode()
