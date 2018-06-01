@@ -16,7 +16,7 @@ from functools import partial
 import numpy as np
 
 # Basic model parameters.
-BATCH_SIZE = 16
+BATCH_SIZE = 128
 NUM_EXAMPLES = 10000
 IMG_SIZE = 28
 saved_path = "/home/pohsuanh/Documents/Schweighofer Lab/my_model_variational.ckpt"
@@ -84,7 +84,7 @@ cifar10 = CIFAR10()
 X, Y = cifar10.cifar10_input()
 X_batch, Y_batch = X.get_next(), Y.get_next()
 n_inputs = IMG_SIZE * IMG_SIZE * 3
-n_hidden1 = 200
+n_hidden1 = 400
 n_hidden2 = 100
 n_hidden3 = 20  # codings
 n_hidden4 = n_hidden2
@@ -125,13 +125,15 @@ training_op = optimizer.minimize(loss)
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
 
-n_epochs = 15
-config = tf.ConfigProto(allow_soft_placement=True)
-config.gpu_options.allow_growth = True
+n_epochs = 4
+#config = tf.ConfigProto(allow_soft_placement=True)
+#config.gpu_options.allow_growth = True
 #config.log_device-placement=True
-with tf.Session(config=config) as sess:
+#with tf.Session(config=config) as sess:
+with tf.Session() as sess:
+
     print('run session...')
-    writer = tf.summary.FileWriter("/home/pohsuanh/Documents/Schweighofer Lab/tensorgraphs", sess.graph)
+   # writer = tf.summary.FileWriter("/home/pohsuanh/Documents/Schweighofer Lab/tensorgraphs", sess.graph)
     
     try :
         print('load session checkpoint...')
@@ -153,8 +155,9 @@ with tf.Session(config=config) as sess:
         inputs = tf.reshape(inputs,[-1,IMG_SIZE * IMG_SIZE*3])
         loss_val, reconstruction_loss_val, latent_loss_val = sess.run([loss, reconstruction_loss, latent_loss])
         print("\r{}".format(epoch), "Train total loss:", loss_val, "\tReconstruction loss:", reconstruction_loss_val, "\tLatent loss:", latent_loss_val)
-        saver.save(sess, saved_path)
-    writer.close()
+    
+    saver.save(sess, saved_path)
+    #writer.close()
 
 
     #(    """     Generate digits from random latent state samples      """     )
@@ -171,6 +174,7 @@ def plot_image(image, shape=[32,32,3], colors="gray"):
 #        image = image.reshape(shape)*1/( np.max(image)-np.min(image) )
 #        image = image + (np.max(image)-np.min(image))*0.5
 #        image = image.astype(np.int8)
+    image = image.reshape(shape)
     plt.imshow(image, cmap=colors, interpolation="nearest")
     plt.axis("off")
     
