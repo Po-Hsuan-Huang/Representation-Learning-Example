@@ -6,9 +6,9 @@
 
 This is my rotation project with Prof. Schweighofer trying to replicate the model proposed by Nutan Chen at. al. in their Efficient movement representation by embedding dynamic movement premitives in deep autoencoders (2015 IEEE-RAS). https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=7363570
 
-The model is able to reconstruct human movements by embedding dynamice movement primitives in latent space of the variational autoencoder with variational bayes fileters (Maximilian Karl et al. ICLR 2017)https://arxiv.org/abs/1605.06432.
+The model is able to reconstruct human movements by embedding dynamic movement primitives in latent space of the variational autoencoder with variational bayes fileters (Maximilian Karl et al. ICLR 2017)https://arxiv.org/abs/1605.06432.
 
-The movement dataset comes from Master Motor Map - Framework and Toolkit for Captuing. Representing, and Reproducing Human Motion on Humanoid Robots (Oemer Terlemez et al.) https://ieeexplore.ieee.org/document/7041470/.
+The movement dataset comes from Master Motor Map - Framework and Toolkit for Capturing. Representing, and Reproducing Human Motion on Humanoid Robots (Oemer Terlemez et al.) https://ieeexplore.ieee.org/document/7041470/.
 
 The project aims to use the powerful generative model to help rehabilitate patients.
 
